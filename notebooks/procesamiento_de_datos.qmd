@@ -101,3 +101,10 @@ head(df_sexo)
 ```
 
 #### Transporte publico o privado
+
+En la base de datos no viene una variable que explicitamente diga si se utilizó transporte publico o privado, pero vienen datos de que medio uso, carro, moto, taxi, camión, etc. Por lo que debemos de procesar esos datos para indicar si se usó un transporte publico o privado
+
+```{r}
+
+```
+
