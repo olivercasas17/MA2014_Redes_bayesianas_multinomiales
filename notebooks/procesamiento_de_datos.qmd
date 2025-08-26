@@ -1,0 +1,103 @@
+---
+title: "Procesamiento_de_Datos"
+format: html
+editor: source
+---
+
+## Procesamiento de los datos
+
+Para los queries necesitamos localizar dentro de los datos las siguientes variables y procesarlas para la DAG:
+
+-   Sexo
+
+-   Medio de transporte que utilizo
+
+-   Proposito del viaje
+
+-   Tiempo de viaje
+
+-   Distritos con menor numero de viviendas y distritos con alta densidad de viviendas
+
+-   Hogares con mayor número de viajes
+
+-   Distrititos urbanos de alta densidad
+
+-   Transporte publico o privado
+
+Vamos a extraer las variables de la estructura de datos, la guardaremos en un vector o lista y al final los metemos a un mismo dataframe
+
+```{r}
+path_tviaje = "../data/eod_2017_csv/tviaje_eod2017/conjunto_de_datos/tviaje.csv"
+
+df_tviaje = read.csv(path_tiempo)
+```
+Revisamos la estructura de los datos.
+```{r}
+head(df_tviaje, n=10)
+```
+
+#### Tiempo
+
+Para obtener el tiempo de cada viaje primero vamos a unir los valores de horas y minutos, tanto de salida como de llegada y luego los pasamos a formato de tiempo y restamos la salida menos la llegada.
+
+```{r}
+library(dplyr)
+df_tiempo <- df_tviaje %>% select(id_via, id_soc, p5_9_1, p5_9_2, p5_10_1, p5_10_2)
+```
+
+```{r}
+str(df_tiempo)
+```
+
+```{r}
+df_tiempo = df_tiempo %>%
+  mutate(
+    hora_salida = as.POSIXct(sprintf("%02d:%02d", p5_9_1, p5_9_2), format = "%H:%M"),
+    hora_llegada = as.POSIXct(sprintf("%02d:%02d", p5_10_1, p5_10_2), format = "%H:%M"),
+    duracion_min = as.numeric(difftime(hora_llegada, hora_salida, units = "mins"))
+  )
+```
+
+```{r}
+head(df_tiempo)
+```
+
+```{r}
+df_tiempo = df_tiempo %>%
+  mutate(
+    tiempo = case_when(
+      duracion_min < 30 ~ "menor30",
+      duracion_min <= 60 ~ "entre30y60",
+      duracion_min > 60 ~ "mayor60",
+      TRUE ~ NA_character_
+    )
+  )
+```
+
+```{r}
+head(df_tiempo)
+```
+#### Sexo
+
+```{r}
+library(dplyr)
+df_sexo <- df_tviaje %>% select(id_via, id_soc, sexo)
+head(df_sexo)
+```
+
+Cambiamos los valores de 1 a hombre y 2 a mujer.
+
+```{r}
+library(dplyr)
+df_sexo$sexo <- case_when(
+  df_sexo$sexo == 1 ~ "hombre",
+  df_sexo$sexo == 2 ~ "mujer",
+  TRUE ~ as.character(df_sexo$sexo)
+)
+```
+
+```{r}
+head(df_sexo)
+```
+
+#### Transporte publico o privado

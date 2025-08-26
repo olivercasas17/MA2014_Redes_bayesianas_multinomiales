@@ -47,3 +47,17 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db
+
+*.Rproj
+
+# Toda la carpeta data
+data/
+
+# Reportes compilados
+reports/*.pdf
+reports/*.html
+reports/*.docx
