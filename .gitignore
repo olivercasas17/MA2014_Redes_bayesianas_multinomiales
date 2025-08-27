@@ -55,7 +55,7 @@ Thumbs.db
 *.Rproj
 
 # Toda la carpeta data
-# data/
+data/*.csv
 
 # Reportes compilados
 reports/*.pdf
