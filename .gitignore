@@ -55,7 +55,7 @@ Thumbs.db
 *.Rproj
 
 # Toda la carpeta data
-data/*.csv
+data/eod_2017_csv*.csv
 
 # Reportes compilados
 reports/*.pdf

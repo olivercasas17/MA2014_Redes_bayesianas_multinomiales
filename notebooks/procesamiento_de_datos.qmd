@@ -27,22 +27,28 @@ Para los queries necesitamos localizar dentro de los datos las siguientes variab
 Vamos a extraer las variables de la estructura de datos, la guardaremos en un vector o lista y al final los metemos a un mismo dataframe
 
 ```{r}
+# Ruta del archivo tviaje,csv
 path_tviaje = "../data/eod_2017_csv/tviaje_eod2017/conjunto_de_datos/tviaje.csv"
 
-df_tviaje = read.csv(path_tiempo)
+# Cargar el archivo
+df_tviaje = read.csv(path_tviaje)
 ```
+
 Revisamos la estructura de los datos.
+
 ```{r}
 head(df_tviaje, n=10)
 ```
 
-#### Tiempo
+### Tiempo
 
 Para obtener el tiempo de cada viaje primero vamos a unir los valores de horas y minutos, tanto de salida como de llegada y luego los pasamos a formato de tiempo y restamos la salida menos la llegada.
 
 ```{r}
 library(dplyr)
-df_tiempo <- df_tviaje %>% select(id_via, id_soc, p5_9_1, p5_9_2, p5_10_1, p5_10_2)
+
+# Selecionarlas columnas de interes para el tiempo
+df_tiempo = df_tviaje %>% select(id_via, id_soc, p5_9_1, p5_9_2, p5_10_1, p5_10_2)
 ```
 
 ```{r}
@@ -77,11 +83,12 @@ df_tiempo = df_tiempo %>%
 ```{r}
 head(df_tiempo)
 ```
-#### Sexo
+
+### Sexo
 
 ```{r}
 library(dplyr)
-df_sexo <- df_tviaje %>% select(id_via, id_soc, sexo)
+df_sexo = df_tviaje %>% select(id_via, id_soc, sexo)
 head(df_sexo)
 ```
 
@@ -89,7 +96,7 @@ Cambiamos los valores de 1 a hombre y 2 a mujer.
 
 ```{r}
 library(dplyr)
-df_sexo$sexo <- case_when(
+df_sexo$sexo = case_when(
   df_sexo$sexo == 1 ~ "hombre",
   df_sexo$sexo == 2 ~ "mujer",
   TRUE ~ as.character(df_sexo$sexo)
@@ -100,11 +107,304 @@ df_sexo$sexo <- case_when(
 head(df_sexo)
 ```
 
-#### Transporte publico o privado
+### Transporte publico o privado
 
 En la base de datos no viene una variable que explicitamente diga si se utilizó transporte publico o privado, pero vienen datos de que medio uso: carro, moto, taxi, camión, etc. Por lo que debemos de procesar esos datos para indicar si se usó un transporte publico o privado
 
 ```{r}
+df_transporte = df_tviaje %>% select(id_via, id_soc, p5_14_01, p5_14_02, p5_14_03, p5_14_04, p5_14_05, p5_14_06, p5_14_07, p5_14_08, p5_14_09, p5_14_10, p5_14_11, p5_14_12, p5_14_13, p5_14_14, p5_14_15, p5_14_16, p5_14_17, p5_14_18, p5_14_19, p5_14_20)
+```
+
+```{r}
+head(df_transporte, n = 20)
+```
+
+En los datos hay 10 tipos de transporte distintos, y se necesita saber solamente si el medio de transporte es publico o privado, por lo que aqui se definira si un transporte es:
+-   Privado
+-   Publico
+-   Otro
+
+#### Transporte Privado
+1. Automóvil
+3. Taxi (App internet)
+7. Bicicleta
+9. Moto
+18. Transporte escolar
+19. Transporte de personal
+
+#### Transporte Público
+2. Colectivo/Micro
+4. Taxi (sitio, calle u otro)
+5. Metro
+6. Autobús RTP o M1
+8. Autobús
+10. Trolebús
+11. Metrobús o Mexibús
+12. Tren ligero
+13. Tren suburbano
+15. Mexicable
+16. Bicitaxi
+17. Mototaxi
+
+#### Otros
+14. Caminó en la calle
+20. Otro medio de transporte
+
+```{r}
+
+# Definir las columnas por categoría
+transporte_privado = c("p5_14_01", "p5_14_03", "p5_14_04", "p5_14_07", "p5_14_09", "p5_14_18", "p5_14_19")
+transporte_publico = c("p5_14_02", "p5_14_05", "p5_14_06", "p5_14_08", "p5_14_10", "p5_14_11", "p5_14_12", "p5_14_13", "p5_14_15", "p5_14_16", "p5_14_17")
+transporte_otro = c("p5_14_14", "p5_14_20")
+
+# Crear la columna transporte
+df_transporte = df_transporte %>%
+  mutate(
+    # Verificar si usó transporte privado (al menos un 1 en las columnas privadas)
+    uso_privado = rowSums(select(., all_of(transporte_privado)) == 1) > 0,
+    
+    # Verificar si usó transporte público (al menos un 1 en las columnas públicas)
+    uso_publico = rowSums(select(., all_of(transporte_publico)) == 1) > 0,
+    
+    # Verificar si usó otro transporte (al menos un 1 en las columnas otros)
+    uso_otro = rowSums(select(., all_of(transporte_otro)) == 1) > 0,
+    
+    # Crear la variable transporte basada en prioridades
+    transporte = case_when(
+      uso_publico & uso_privado & uso_otro ~ "mixto",
+      uso_publico & uso_privado ~ "mixto",
+      uso_publico & uso_otro ~ "publico", 
+      uso_privado & uso_otro ~ "privado",
+      uso_publico ~ "publico",
+      uso_privado ~ "privado",
+      uso_otro ~ "otro",
+      TRUE ~ "ninguno"
+    )
+  ) %>%
+  # Eliminar las columnas auxiliares
+  select(-uso_privado, -uso_publico, -uso_otro)
 
 ```
+
+```{r}
+head(df_transporte)
+```
+
+
+### Clasificación del dia de viaje
+
+Se clasificará el dia de viaje en dos categorias: entre semana y fin de semana.
+
+```{r}
+library(dplyr)
+df_diaviaje = df_tviaje %>% select(id_via, id_soc, p5_3)
+head(df_diaviaje)
+```
+
+```{r}
+library(dplyr)
+df_diaviaje$p5_3 = case_when(
+  df_diaviaje$p5_3 == 1 ~ "entreSemana",
+  df_diaviaje$p5_3 == 2 ~ "finDeSemana",
+  TRUE ~ as.character(df_diaviaje$p5_3)
+)
+```
+
+```{r}
+head(df_diaviaje)
+```
+
+### Proposito de viaje
+
+1. Ir al hogar
+2. Ir al trabajo
+3. Ir a estudiar
+4. Ir de compras (bienes y servicios)
+5. Convivir a(amigos o familiares), deportes o recreación
+6. Llevar o recoger a alguien
+7. Hacer un trámite
+8. Ir al médico o recibir atención de salud
+9. Ir a acto religioso
+10. Otro
+99. No sabe
+
+```{r}
+library(dplyr)
+df_proposito = df_tviaje %>% select(id_via, id_soc, p5_13)
+head(df_proposito)
+```
+
+```{r}
+library(dplyr)
+df_proposito$p5_13 = case_when(
+  df_proposito$p5_13 == 1 ~ "hogar",
+  df_proposito$p5_13 == 2 ~ "trabajo",
+  df_proposito$p5_13 == 3 ~ "estudiar",
+  df_proposito$p5_13 == 4 ~ "compras",
+  df_proposito$p5_13 == 5 ~ "convivir",
+  df_proposito$p5_13 == 6 ~ "llevarORecoger",
+  df_proposito$p5_13 == 7 ~ "tramite",
+  df_proposito$p5_13 == 8 ~ "salud",
+  df_proposito$p5_13 == 9 ~ "religión",
+  df_proposito$p5_13 == 10 ~ "otro",
+  df_proposito$p5_13 == 99 ~ "nosabe",
+  TRUE ~ as.character(df_proposito$p5_13)
+)
+```
+
+```{r}
+head(df_proposito)
+```
+
+
+### Número de viajes por hogar
+
+```{r}
+# Ruta del archivo tsdem,csv
+path_tsdem = "../data/eod_2017_csv/tsdem_eod2017/conjunto_de_datos/tsdem.csv"
+
+# Cargar el archivo
+df_tsdem = read.csv(path_tsdem)
+```
+
+```{r}
+library(dplyr)
+
+# Selecionar las columnas de interes para los viajes del hogar
+df_viajesHogar = df_tsdem %>% select(id_soc, id_hog, p5_4, p6_4)
+```
+
+```{r}
+head(df_viajesHogar)
+```
+
+```{r}
+df_viajesHogar = df_viajesHogar %>% replace(is.na(.), 0)
+```
+
+```{r}
+head(df_viajesHogar)
+```
+
+```{r}
+df_viajesHogar$viajeshogar = df_viajesHogar$p5_4 + df_viajesHogar$p6_4
+```
+
+```{r}
+head(df_viajesHogar)
+```
+
+```{r}
+sum(is.na(df_viajesHogar$viajeshogar))
+```
+
+```{r}
+summary(df_viajesHogar$viajeshogar)
+```
+
+```{r}
+library(dplyr)
+df_viajesHogar$viajeshogar = case_when(
+  df_viajesHogar$viajeshogar < 7 ~ "pocos",
+  (df_viajesHogar$viajeshogar > 6 & df_viajesHogar$viajeshogar < 12) ~ "medios",
+  df_viajesHogar$viajeshogar > 12 ~ "muchos",
+ 
+  TRUE ~ as.character(df_viajesHogar$viajeshogar)
+)
+```
+
+```{r}
+head(df_viajesHogar, n = 30)
+```
+
+
+### Tamaño de la localidad
+```{r}
+library(dplyr)
+
+# Selecionar las columnas de interes para los tamaños de localidad
+df_localidad = df_tsdem %>% select(id_soc, id_hog, tloc)
+```
+
+```{r}
+head(df_localidad)
+```
+
+```{r}
+library(dplyr)
+df_localidad$tloc = case_when(
+  df_localidad$tloc < 3 ~ "pequeña",
+  df_localidad$tloc == 4 ~ "grande",
+ 
+  TRUE ~ as.character(df_viajesHogar$viajeshogar)
+)
+```
+
+```{r}
+head(df_localidad)
+```
+
+
+
+### Juntar los datos ya limpios
+
+```{r}
+
+df_viajes = data.frame(
+  "id_user" = df_tviaje$id_soc,
+  "sexo" = df_sexo$sexo, 
+  "tiempo" = df_tiempo$tiempo, 
+  "transporte" = df_transporte$transporte,
+  "dia" = df_diaviaje$p5_3,
+  "proposito" = df_proposito$p5_13
+)
+```
+
+```{r}
+head(df_viajes)
+```
+
+```{r}
+df_demo = data.frame(
+  "id" = df_tsdem$id_soc,
+  "viajesHogar" = df_viajesHogar$viajeshogar,
+  "localidad" = df_localidad$tloc
+)
+```
+
+```{r}
+head(df_demo)
+```
+
+
+```{r}
+library(dplyr)
+
+data = df_viajes %>%
+  left_join(df_demo, by = c("id_user" = "id"))
+library(dplyr)
+
+data = data %>% select(-id_user)
+
+```
+
+
+```{r}
+head(data)
+```
+
+```{r}
+summary(data)
+```
+
+```{r}
+library(readr)
+write_csv(data, "../data/data.csv")
+```
+
+
+
+
+
+
 
