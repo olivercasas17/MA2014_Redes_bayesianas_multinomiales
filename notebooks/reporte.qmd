@@ -1,0 +1,86 @@
+---
+title: "Redes bayesianas multinomiales"
+author: ""
+date: today
+format:
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    number-depth: 3
+    fontsize: 11pt
+    linestretch: 1.5
+    geometry: margin=2.5cm
+    papersize: a4
+    fig-width: 6
+    fig-height: 4
+    fig-pos: "H"
+    code-line-numbers: true
+    keep-tex: true
+    documentclass: article
+    mainfont: Times New Roman
+    monofont: Courier New
+    sansfont: Arial
+editor: source
+---
+
+### Abstract
+Abstract: Síntesis breve y clara del contenido completo del artículo. Debe incluir el objetivo principal del estudio, la metodología empleada, los resultados más relevantes y las conclusiones principales
+
+### Introducción
+Introducción: Presenta el contexto y la motivación del problema a estudiar. Debe incluir una revisión breve del estado del arte o antecedentes relevantes, plantear claramente el problema o hipótesis que se aborda, y explicar la importancia del trabajo.
+
+### metodología
+Metodología: Describe detalladamente el enfoque, las técnicas, procedimientos, materiales y herramientas utilizadas para desarrollar el problema. Esta sección debe ser lo suficientemente clara para que otras personas puedan replicar el estudio.
+
+### Aplicación
+Aplicación: Muestra la implementación práctica de la metodología o la solución propuesta, incluyendo la descripción de los datos, experimentos o simulaciones, modelación y validación. Se presentan resultados obtenidos, se analizan y se discuten.
+
+### Conclusiones
+Conclusiones: Resume los hallazgos principales del estudio y su relevancia. Se destacan las implicaciones del trabajo, posibles limitaciones y sugerencias para investigaciones futuras o mejoras.
+
+### Referencias
+Referencias: Lista completa de todas las fuentes bibliográficas citadas en el artículo.
+
+```{r}
+library(bnlearn)
+
+data = read.csv("../data/data.csv", stringsAsFactors = TRUE)
+head(data)
+```
+
+```{r}
+dag = empty.graph(nodes = c("A", "S", "E", "O", "R", "T"))
+```
+
+```{r}
+best_dag = hc(data)
+```
+
+```{r}
+modelstring(best_dag)
+```
+
+```{r}
+score(best_dag, data = data, type = "bic")
+score(best_dag, data = data, type = "aic")
+```
+
+```{r}
+graphviz.plot(best_dag, shape = "ellipse")
+```
+
+```{r}
+bn = bn.fit(best_dag, data = data)
+```
+
+```{r}
+cpquery(bn, event = (transporte == "publico"), evidence = (proposito == "trabajo" & sexo == "hombre"), n = 10^6)
+```
+
+
+
+
+
+
+

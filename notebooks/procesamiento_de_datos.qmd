@@ -398,9 +398,31 @@ summary(data)
 ```
 
 ```{r}
-library(readr)
-write_csv(data, "../data/data.csv")
+sum(is.na(data))
 ```
+
+```{r}
+data <- na.omit(data)
+```
+
+```{r}
+sum(is.na(data))
+```
+```{r}
+columnas = c("sexo", "tiempo", "transporte", "dia", "proposito", "viajes", "localidad")
+
+colnames(data) = columnas
+head(data)
+```
+
+
+```{r}
+write.csv(data, "../data/data.csv", row.names = FALSE)
+```
+
+
+
+
 
 
 
