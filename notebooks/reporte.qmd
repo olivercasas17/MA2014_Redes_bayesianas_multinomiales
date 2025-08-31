@@ -22,65 +22,174 @@ format:
     monofont: Courier New
     sansfont: Arial
 editor: source
+  markdown: 
+    wrap: 72
 ---
 
 ### Abstract
+
 Abstract: Síntesis breve y clara del contenido completo del artículo. Debe incluir el objetivo principal del estudio, la metodología empleada, los resultados más relevantes y las conclusiones principales
 
 ### Introducción
+
 Introducción: Presenta el contexto y la motivación del problema a estudiar. Debe incluir una revisión breve del estado del arte o antecedentes relevantes, plantear claramente el problema o hipótesis que se aborda, y explicar la importancia del trabajo.
 
-### metodología
-Metodología: Describe detalladamente el enfoque, las técnicas, procedimientos, materiales y herramientas utilizadas para desarrollar el problema. Esta sección debe ser lo suficientemente clara para que otras personas puedan replicar el estudio.
+### Metodología
+
+El trabajo sigue un enfoque cuantitativo, de modelado estadistico y probabilistico, utiizando redes bayesianas multinomiales para representar relaciones de dependencia entre las variables seleccionadas para resolver las queries.
+
+A partir de las queries proporcionadas, se analizaron para determinar que variables tendriamos que extraer de la base de datos de la encuesta Origen-Destino 2017. Una vez seleccionadas estas variables, fueron procesadas en -- para poder trabajar con estos datos. Se construyeron dos gráficos acíclicos dirigidos, tambien conocidos como DAG, uno basado en conocimiento previo y otro generado con un algoritmo de optimizacion. Se compararon las dos DAGs usando metricas estadisticas y, realizando un ajuste de parametros con la mejor de las dos, se calcularon las queries.
+
+Las principales tecnicas empleadas para realizar este articulo fueron:\
+-Análisis de redes bayesianas, construyendo grafos acíclicos dirigidos para modelar relaciones de dependencia entre variables categoricas\
+-Algoritmos de optimizacion, especificamente hill climbing, como generador de una DAG\
+-Evaluacion de modelos, usando metodos estadisticos como el Criterio de Informacion de AKaike y el Criterio de Informacion Bayesiano, AIC y BIC por sus siglas en ingles.\
+-Inferencia probabilistica, consultas condicionales para estimar probabilidades bajo evidencia
+
+Los materiales utilizados para realizar este analisis fueron los siguientes:\
+data.csv - los datos procesados\
+tviaje.csv y tsdem.csv - los datos preprocesados\
+eod_2017_csv.zip - El conjunto completo de datos de la encuensta Origen-Destino 2017
+
+Las herramientas que utilizamos fueron las siguientes:\
+Lenguaje de programacion R\
+Librerias: dplyr, bnlearn, Rgraphviz\
+Entorno de trabajo R Studio
 
 ### Aplicación
+
 Aplicación: Muestra la implementación práctica de la metodología o la solución propuesta, incluyendo la descripción de los datos, experimentos o simulaciones, modelación y validación. Se presentan resultados obtenidos, se analizan y se discuten.
-
-### Conclusiones
-Conclusiones: Resume los hallazgos principales del estudio y su relevancia. Se destacan las implicaciones del trabajo, posibles limitaciones y sugerencias para investigaciones futuras o mejoras.
-
-### Referencias
-Referencias: Lista completa de todas las fuentes bibliográficas citadas en el artículo.
 
 ```{r}
 library(bnlearn)
 
-data = read.csv("../data/data.csv", stringsAsFactors = TRUE)
+data = read.csv("data/data.csv", stringsAsFactors = TRUE)
 head(data)
 ```
 
+La base de datos que estamos utilizando cuenta con 7 columnas, categorizadas de la siguiente manera\
+sexo: hombre y mujer\
+tiempo - Duracion total del viaje: entre30y60, mayor60 y menor30\\ transporte\
+Tipo de transporte utilizado: publico, privado y otro\
+dia - Dia en el que se realizo el viaje: entreSemana y finDeSemana\
+proposito - Proposito del viaje\\ viajes - Cantidad de viajes que realiza el hogar de la persona que realiza el viaje: pocos y muchos\
+localidad - Tamano de la localidad donde se realiza el viaje: pequeña y grande
+
+Creacion de la Dag usando hill climbing
+
 ```{r}
-dag = empty.graph(nodes = c("A", "S", "E", "O", "R", "T"))
+dag = empty.graph(nodes = c("sexo", "tiempo", "transporte", "dia", "proposito", "viajes", "localidad"))
 ```
 
 ```{r}
-best_dag = hc(data)
+hc_dag = hc(data)
 ```
 
 ```{r}
-modelstring(best_dag)
+modelstring(hc_dag)
 ```
 
 ```{r}
-score(best_dag, data = data, type = "bic")
-score(best_dag, data = data, type = "aic")
+graphviz.plot(hc_dag, shape = "ellipse")
+```
+
+Evaluacion de la DAG creada
+
+```{r}
+score(hc_dag, data = data, type = "bic")
 ```
 
 ```{r}
-graphviz.plot(best_dag, shape = "ellipse")
+score(hc_dag, data = data, type = "aic")
 ```
+
+Creacion de la DAG utilizando conocimiento previo
+
+```{r}
+new_dag = empty.graph(nodes = c("sexo", "tiempo", "transporte", "dia", "proposito", "viajes", "localidad"))
+```
+
+```{r}
+arc_set = matrix(c("sexo", "proposito",
+                   "sexo", "transporte",
+                   "localidad", "transporte",
+                   "proposito", "dia",
+                   "transporte", "tiempo",
+                   "localidad", "tiempo",
+                   "dia", "viajes",
+                   "tiempo", "viajes"), byrow = TRUE, ncol = 2,
+                 dimnames = list(NULL, c("from", "to")))
+```
+
+```{r}
+arcs(new_dag) = arc_set
+```
+
+```{r}
+graphviz.plot(new_dag, shape = "ellipse")
+```
+
+Evaluacion de la DAG creada
+
+```{r}
+score(new_dag, data = data, type = "bic")
+```
+
+```{r}
+score(new_dag, data = data, type = "aic")
+```
+
+hc dag\
+-2787909 aic\
+-2791118 bic
+
+manual dag\
+-2839815 aic\
+-2839038 bic\
+Como podemos observar, el puntaje de la DAG generada con hill climbing, tanto con AIC como con BIC es superior, por lo que concluimos que es un mejor modelo, y sera el que utilicemos para realizar la inferencia probabilistca.
 
 ```{r}
 bn = bn.fit(best_dag, data = data)
 ```
 
+Calculo de las consultas condicionales
+
+Query 1: Cual es la probabilidad de que un hombre use el transporte publico cuando su destino es trabajo
+
 ```{r}
 cpquery(bn, event = (transporte == "publico"), evidence = (proposito == "trabajo" & sexo == "hombre"), n = 10^6)
 ```
 
+Query 2: Cual es la probabilidad de que le tiempo de viaje sea menor a 30 minutos dado que el viaje se hizo entre semana
 
+```{r}
+cpquery(bn, event = (tiempo == "menor30"), evidence = (dia == "entreSemana"), n = 10^6)
+```
 
+Query 3: Cual es la probabilidad de que las personas que habitan en localidades pequenas realices viajes mayores a 60 minutos frente a quienes habitan localidades grandes
 
+```{r}
 
+```
 
+```{r}
 
+```
+
+Query 4: Cual es la probabilidad de que los hogares con muchos viajes en localidades grandes, utilicen transporte publico o privado
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+### Conclusiones
+
+Conclusiones: Resume los hallazgos principales del estudio y su relevancia. Se destacan las implicaciones del trabajo, posibles limitaciones y sugerencias para investigaciones futuras o mejoras.
+
+### Referencias
+
+Referencias: Lista completa de todas las fuentes bibliográficas citadas en el artículo.
