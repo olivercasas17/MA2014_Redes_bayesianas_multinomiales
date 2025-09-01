@@ -1,9 +1,15 @@
 ---
 title: "Redes bayesianas multinomiales"
-author: ""
+author:
+  - name: "Oliver Arturo Casas Pontanillo | A01645764"
+  - name: "Erik Abraham Jajan Díaz | A01644648"
+  - name: "José Luis Santos Montaño | A01781721"
 date: today
 format:
   pdf:
+    code-block-bg: true
+    code-block-border-left: true
+    code-block-wrap: true
     toc: true
     toc-depth: 3
     number-sections: true
@@ -21,14 +27,21 @@ format:
     mainfont: Times New Roman
     monofont: Courier New
     sansfont: Arial
-editor: source
-  markdown: 
+header-includes:
+  - \usepackage{fvextra}
+  - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines=true,breakanywhere=true,commandchars=\\\{\}}
+editor:
+  source: true
+  markdown:
     wrap: 72
 ---
 
+
+https://github.com/olivercasas17/MA2014_Redes_bayesianas_multinomiales
+
 ### Abstract
 
-Este estudio analiza patrones de movilidad urbana a partir de la Encuesta Origen–Destino 2017 utilizando redes bayesianas multinomiales. El objetivo principal es modelar las dependencias entre variables sociodemográficas, de transporte y de viaje para estimar probabilidades condicionales relevantes en el análisis de movilidad. La metodología consistió en la construcción de grafos acíclicos dirigidos (DAG), uno basado en conocimiento previo y otro generado mediante el algoritmo de hill climbing. Ambos modelos fueron evaluados con métricas estadísticas como el Criterio de Información de Akaike (AIC) y el Criterio de Información Bayesiano (BIC). Los resultados muestran que el modelo aprendido con hill climbing obtuvo un mejor ajuste, por lo que se utilizó para realizar inferencia probabilística mediante consultas condicionales (queries). Los hallazgos permiten identificar, por ejemplo, la influencia de la localidad y el propósito del viaje en la elección del transporte, así como diferencias significativas en la duración de los viajes según el tamaño de la localidad. En conclusión, las redes bayesianas se muestran como una herramienta útil para explorar y predecir patrones de movilidad en contextos urbanos complejos.
+Este estudio analiza patrones de movilidad urbana a partir de la Encuesta Origen–Destino 2017 del INEGI utilizando redes bayesianas multinomiales. El objetivo principal es modelar las dependencias entre variables sociodemográficas, de transporte y de viaje para estimar probabilidades condicionales relevantes en el análisis de movilidad. La metodología consistió en la construcción de grafos acíclicos dirigidos (DAG), uno basado en conocimiento previo y otro generado mediante el algoritmo de hill climbing. Ambos modelos fueron evaluados con métricas estadísticas como el Criterio de Información de Akaike (AIC) y el Criterio de Información Bayesiano (BIC). Los resultados muestran que el modelo aprendido con hill climbing obtuvo un mejor ajuste, por lo que se utilizó para realizar inferencia probabilística mediante consultas condicionales (queries). Los hallazgos permiten identificar, por ejemplo, la influencia de la localidad y el propósito del viaje en la elección del transporte, así como diferencias significativas en la duración de los viajes según el tamaño de la localidad. En conclusión, las redes bayesianas se muestran como una herramienta útil para explorar y predecir patrones de movilidad en contextos urbanos complejos.
 
 ### Introducción
 
@@ -64,12 +77,10 @@ Entorno de trabajo R Studio
 
 ### Aplicación
 
-Aplicación: Muestra la implementación práctica de la metodología o la solución propuesta, incluyendo la descripción de los datos, experimentos o simulaciones, modelación y validación. Se presentan resultados obtenidos, se analizan y se discuten.
-
 ```{r}
 library(bnlearn)
 
-data = read.csv("data (1).csv", stringsAsFactors = TRUE)
+data = read.csv("../data/data.csv", stringsAsFactors = TRUE)
 head(data)
 ```
 
@@ -171,33 +182,35 @@ Query 2: Cual es la probabilidad de que le tiempo de viaje sea menor a 30 minuto
 ```{r}
 cpquery(bn, event = (tiempo == "menor30"), evidence = (dia == "entreSemana"), n = 10^6)
 ```
-
 Query 3: Cual es la probabilidad de que las personas que habitan en localidades pequenas realices viajes mayores a 60 minutos frente a quienes habitan localidades grandes
 
 ```{r}
-cpquery(bn, event = (localidad == "pequeña"), evidence = (tiempo == "mayor60"), n = 10^6)
+cpquery(bn, event = (tiempo == "mayor60"), evidence = (localidad == "pequeña"), n = 10^6)
 ```
 
 ```{r}
-cpquery(bn, event = (localidad == "grande"), evidence = (tiempo == "mayor60"), n = 10^6)
+cpquery(bn, event = (tiempo == "mayor60"), evidence = (localidad == "grande"), n = 10^6)
 ```
-La probabilidad de que alguien realice un viaje mayor a 60 min es mucho más alta en localidades pequeñas que en localidades grandes, siendo casi del 95% en las localidades pequeñas, mientras que en las grandes apenas un tercio de 1% de la población lo hace.
+La probabilidad de que alguien realice un viaje mayor a 60 min es un poco mas alta en localidades grandes, solamente un 4 por ciento.
 
 Query 4: Cual es la probabilidad de que los hogares con muchos viajes en localidades grandes, utilicen transporte publico o privado
 
 ```{r}
-cpquery(
-  bn,
-  event = (viajes == "medios"),
-  evidence = (localidad == "grande" & (transporte == "publico" | transporte == "privado")),
-  n = 10^6
-)
+cpquery(bn, event = (transporte == "publico"), evidence = (viajes == "medios" & localidad == "grande"), n = 10^6)
+
 ```
+```{r}
+cpquery(bn, event = (transporte == "privado"), evidence = (viajes == "medios" & localidad == "grande"), n = 10^6)
+```
+Es mas alta la probabilidad de que una persona viaje en transporte publico que privado en un hogar con muchos viajes y que vive en una localidad grande.
 
 ### Conclusiones
 
-Conclusiones: Resume los hallazgos principales del estudio y su relevancia. Se destacan las implicaciones del trabajo, posibles limitaciones y sugerencias para investigaciones futuras o mejoras.
+El estudio nos permitio identificar que las redes bayesianas multinomiales son una gran herramienta para analizar bases de datos con datos categoricos, en este caso la encuesta del INEGI, asi como sus relaciones de dependencia. Entre las cosas mas interesantes que descrubrimos en el proceso fue que la DAG generada con el algoritmo de hill climbing presento un mejor ajuste a la DAG creada con conocimiento previo.\ De las queries lo mas interesante fue que no parece haber mucha diferencia en los tiempos de viaje entre localidades grandes y pequeñas. Otra conclusion interesante es que la mitad de los hombres que trabajan usan transporte publico, por lo que podriamos inferir que la otra mitad usa transporte privado.\ 
+La principal limitacion de este estudio es definitivamente el uso de un subconjunto de variables en lugar de usar  el total de las variables de la encuesta de la INEGI.
 
 ### Referencias
 
-Referencias: Lista completa de todas las fuentes bibliográficas citadas en el artículo.
+- https://cran.r-project.org/web/packages/bnlearn/bnlearn.pdf
+- https://www.inegi.org.mx/programas/eod/2017/
+
