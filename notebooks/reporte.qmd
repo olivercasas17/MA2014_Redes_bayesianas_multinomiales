@@ -28,11 +28,17 @@ editor: source
 
 ### Abstract
 
-Abstract: Síntesis breve y clara del contenido completo del artículo. Debe incluir el objetivo principal del estudio, la metodología empleada, los resultados más relevantes y las conclusiones principales
+Este estudio analiza patrones de movilidad urbana a partir de la Encuesta Origen–Destino 2017 utilizando redes bayesianas multinomiales. El objetivo principal es modelar las dependencias entre variables sociodemográficas, de transporte y de viaje para estimar probabilidades condicionales relevantes en el análisis de movilidad. La metodología consistió en la construcción de grafos acíclicos dirigidos (DAG), uno basado en conocimiento previo y otro generado mediante el algoritmo de hill climbing. Ambos modelos fueron evaluados con métricas estadísticas como el Criterio de Información de Akaike (AIC) y el Criterio de Información Bayesiano (BIC). Los resultados muestran que el modelo aprendido con hill climbing obtuvo un mejor ajuste, por lo que se utilizó para realizar inferencia probabilística mediante consultas condicionales (queries). Los hallazgos permiten identificar, por ejemplo, la influencia de la localidad y el propósito del viaje en la elección del transporte, así como diferencias significativas en la duración de los viajes según el tamaño de la localidad. En conclusión, las redes bayesianas se muestran como una herramienta útil para explorar y predecir patrones de movilidad en contextos urbanos complejos.
 
 ### Introducción
 
-Introducción: Presenta el contexto y la motivación del problema a estudiar. Debe incluir una revisión breve del estado del arte o antecedentes relevantes, plantear claramente el problema o hipótesis que se aborda, y explicar la importancia del trabajo.
+El estudio de la movilidad urbana es un componente esencial para comprender la dinámica de las ciudades y apoyar la toma de decisiones en materia de planeación y políticas públicas. La Encuesta Origen–Destino 2017 proporciona información detallada sobre los hábitos de transporte de la población en México, lo que abre la posibilidad de aplicar enfoques estadísticos avanzados para modelar las relaciones entre variables sociodemográficas, espaciales y de transporte.
+
+En este trabajo se propone el uso de redes bayesianas multinomiales como marco de análisis. Estas redes permiten representar relaciones de dependencia entre variables categóricas a través de grafos acíclicos dirigidos (DAG), ofreciendo no solo una estructura visual de dichas relaciones, sino también la capacidad de realizar inferencias probabilísticas bajo condiciones específicas.
+
+La construcción del modelo se llevó a cabo de dos maneras: (1) mediante el diseño de una estructura basada en conocimiento previo y (2) utilizando un enfoque de aprendizaje automático con el algoritmo de hill climbing. Posteriormente, ambos modelos fueron evaluados con criterios de información (AIC y BIC) para seleccionar la estructura con mejor desempeño. Una vez identificado el modelo más adecuado, se realizaron consultas condicionales con el fin de explorar preguntas relevantes, como la relación entre el propósito del viaje y el uso del transporte público, o la influencia del tamaño de la localidad en la duración de los viajes.
+
+Este enfoque no solo permite identificar patrones empíricos en los datos, sino también aportar una herramienta flexible para el análisis probabilístico de la movilidad urbana.
 
 ### Metodología
 
@@ -63,7 +69,7 @@ Aplicación: Muestra la implementación práctica de la metodología o la soluci
 ```{r}
 library(bnlearn)
 
-data = read.csv("data/data.csv", stringsAsFactors = TRUE)
+data = read.csv("data (1).csv", stringsAsFactors = TRUE)
 head(data)
 ```
 
@@ -149,7 +155,7 @@ manual dag\
 Como podemos observar, el puntaje de la DAG generada con hill climbing, tanto con AIC como con BIC es superior, por lo que concluimos que es un mejor modelo, y sera el que utilicemos para realizar la inferencia probabilistca.
 
 ```{r}
-bn = bn.fit(best_dag, data = data)
+bn = bn.fit(hc_dag, data = data)
 ```
 
 Calculo de las consultas condicionales
@@ -169,21 +175,23 @@ cpquery(bn, event = (tiempo == "menor30"), evidence = (dia == "entreSemana"), n 
 Query 3: Cual es la probabilidad de que las personas que habitan en localidades pequenas realices viajes mayores a 60 minutos frente a quienes habitan localidades grandes
 
 ```{r}
-
+cpquery(bn, event = (localidad == "pequeña"), evidence = (tiempo == "mayor60"), n = 10^6)
 ```
 
 ```{r}
-
+cpquery(bn, event = (localidad == "grande"), evidence = (tiempo == "mayor60"), n = 10^6)
 ```
+La probabilidad de que alguien realice un viaje mayor a 60 min es mucho más alta en localidades pequeñas que en localidades grandes, siendo casi del 95% en las localidades pequeñas, mientras que en las grandes apenas un tercio de 1% de la población lo hace.
 
 Query 4: Cual es la probabilidad de que los hogares con muchos viajes en localidades grandes, utilicen transporte publico o privado
 
 ```{r}
-
-```
-
-```{r}
-
+cpquery(
+  bn,
+  event = (viajes == "medios"),
+  evidence = (localidad == "grande" & (transporte == "publico" | transporte == "privado")),
+  n = 10^6
+)
 ```
 
 ### Conclusiones
