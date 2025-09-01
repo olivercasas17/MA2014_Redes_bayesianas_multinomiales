@@ -5,26 +5,15 @@ editor: source
 ---
 
 ## Procesamiento de los datos
-
 Para los queries necesitamos localizar dentro de los datos las siguientes variables y procesarlas para la DAG:
-
 -   Sexo
-
--   Medio de transporte que utilizo
-
--   Proposito del viaje
-
+-   Propósito del viaje
 -   Tiempo de viaje
-
--   Distritos con menor numero de viviendas y distritos con alta densidad de viviendas
-
--   Hogares con mayor número de viajes
-
--   Distrititos urbanos de alta densidad
-
--   Transporte publico o privado
-
-Vamos a extraer las variables de la estructura de datos, la guardaremos en un vector o lista y al final los metemos a un mismo dataframe
+-   Clasificación del día de viaje
+-   Número de viajes por hogar
+-   Tamaño de la población
+-   Transporte público o privado
+Vamos a extraer las variables de la estructura de datos, la guardaremos en un vector o lista y al final los metemos a un mismo dataframe.
 
 ```{r}
 # Ruta del archivo tviaje,csv
@@ -42,12 +31,12 @@ head(df_tviaje, n=10)
 
 ### Tiempo
 
-Para obtener el tiempo de cada viaje primero vamos a unir los valores de horas y minutos, tanto de salida como de llegada y luego los pasamos a formato de tiempo y restamos la salida menos la llegada.
+Para obtener el tiempo de cada viaje primero vamos a unir los valores de horas y minutos, tanto de salida como de llegada y luego los pasamos a formato de tiempo y restamos la llegada menos la salida.
 
 ```{r}
 library(dplyr)
 
-# Selecionarlas columnas de interes para el tiempo
+# Selecionar las columnas de interes para el tiempo
 df_tiempo = df_tviaje %>% select(id_via, id_soc, p5_9_1, p5_9_2, p5_10_1, p5_10_2)
 ```
 
@@ -85,7 +74,7 @@ head(df_tiempo)
 ```
 
 ### Sexo
-
+Para la variable de sexo solamente pasaremos el valor para que sea texto en vez de números.
 ```{r}
 library(dplyr)
 df_sexo = df_tviaje %>% select(id_via, id_soc, sexo)
@@ -160,13 +149,10 @@ transporte_otro = c("p5_14_14", "p5_14_20")
 # Crear la columna transporte
 df_transporte = df_transporte %>%
   mutate(
-    # Verificar si usó transporte privado (al menos un 1 en las columnas privadas)
     uso_privado = rowSums(select(., all_of(transporte_privado)) == 1) > 0,
     
-    # Verificar si usó transporte público (al menos un 1 en las columnas públicas)
     uso_publico = rowSums(select(., all_of(transporte_publico)) == 1) > 0,
     
-    # Verificar si usó otro transporte (al menos un 1 en las columnas otros)
     uso_otro = rowSums(select(., all_of(transporte_otro)) == 1) > 0,
     
     # Crear la variable transporte basada en prioridades
@@ -259,6 +245,7 @@ head(df_proposito)
 
 ### Número de viajes por hogar
 
+Para calcular el número de viajes que se hicieron por hogar, se van a sumar los viajes que se hicieron por hogar entre semana más los viajes que se hicieron por hogar los sábados.
 ```{r}
 # Ruta del archivo tsdem,csv
 path_tsdem = "../data/eod_2017_csv/tsdem_eod2017/conjunto_de_datos/tsdem.csv"
@@ -319,6 +306,7 @@ head(df_viajesHogar, n = 30)
 
 
 ### Tamaño de la localidad
+El tamaño de la localidad se separa en dos, pequeña y grande.
 ```{r}
 library(dplyr)
 
@@ -348,6 +336,7 @@ head(df_localidad)
 
 ### Juntar los datos ya limpios
 
+Creamos un dataframe, definimos el nombre que tendran nuestras columnas y también definimos de que dataframe vamos a agarrar cada dato. Este dataframe solo es para las variables que se obtuvieron del archivo tviaje.csv.
 ```{r}
 
 df_viajes = data.frame(
@@ -364,6 +353,7 @@ df_viajes = data.frame(
 head(df_viajes)
 ```
 
+Ahora hacemos otro dataframe pero con las variables que se obtuvieron del archivo tsdem.csv
 ```{r}
 df_demo = data.frame(
   "id" = df_tsdem$id_soc,
@@ -376,7 +366,7 @@ df_demo = data.frame(
 head(df_demo)
 ```
 
-
+Y ahora los unimos, asegurandonos de que los id coincidan.
 ```{r}
 library(dplyr)
 
@@ -397,6 +387,7 @@ head(data)
 summary(data)
 ```
 
+Verificamos qye no existan valores nulos, y si hay los eliminamos.
 ```{r}
 sum(is.na(data))
 ```
@@ -408,6 +399,7 @@ data <- na.omit(data)
 ```{r}
 sum(is.na(data))
 ```
+T por ultimo renombramos los nombres de las columnas para facilidad de lectura de la tabla y guardamos el archivo data.csv.
 ```{r}
 columnas = c("sexo", "tiempo", "transporte", "dia", "proposito", "viajes", "localidad")
 
